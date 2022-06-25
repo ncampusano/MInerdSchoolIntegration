@@ -30,7 +30,7 @@ namespace MInerdSchoolIntegration.Controllers
             School school = _context.School.Where(s => s.Code == schoolCode).FirstOrDefault();
             string fileName = $"{school.Name}.txt";
             DateTime CurrentDate = DateTime.Now;
-           ICollection<Student> students =  _context.Student.Where(s => s.School.Code == "00639").ToList();
+           ICollection<Student> students =  _context.Student.Where(s => s.School.Code == schoolCode).ToList();
 
             MemoryStream memoryStream = new MemoryStream();
             TextWriter tw = new StreamWriter(memoryStream);
@@ -49,7 +49,7 @@ namespace MInerdSchoolIntegration.Controllers
                 }
 
                 tw.WriteLine($"|D||{student.Rne}|{student.Town}|{student.AcademicPeriod}|{student.AcademicLevel}|{student.AcademicGrade}|{academycInformation.Substring(1, academycInformation.Length - 1)}|{student.BloodType}|{student.Disabilities}|");
-            }
+            }  
 
             tw.Flush();
 
