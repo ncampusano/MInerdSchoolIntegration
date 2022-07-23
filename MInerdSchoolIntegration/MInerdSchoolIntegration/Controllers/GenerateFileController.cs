@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.CompilerServices;
 using MinerdSchoolIntegration.Data.Entities;
 using MInerdSchoolIntegration.Data;
+using MInerdSchoolIntegration.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,14 +30,23 @@ namespace MInerdSchoolIntegration.Controllers
         public IActionResult Generate(string schoolCode = "00639")
         {
             School school = _context.School.Where(s => s.Code == schoolCode).FirstOrDefault();
+
             string fileName = $"{school.Name}.txt";
             DateTime CurrentDate = DateTime.Now;
            ICollection<Student> students =  _context.Student.Where(s => s.School.Code == schoolCode).ToList();
 
             MemoryStream memoryStream = new MemoryStream();
             TextWriter tw = new StreamWriter(memoryStream);
+            List<Detalle> detalles = new List<Detalle>();
 
-            tw.WriteLine($"|E|{CurrentDate.Day.ToString().PadLeft(2, '0')}{CurrentDate.Month.ToString().PadLeft(2, '0')}{CurrentDate.Year}|{schoolCode}|{school.CampusCode}|{students.Count}|");
+            Encabezado encabezado = new Encabezado
+            {
+                TipoRegistro = "E",
+                FechaRemision = $"{CurrentDate.Day.ToString().PadLeft(2, '0')}{CurrentDate.Month.ToString().PadLeft(2, '0')}{CurrentDate.Year}",
+                CodigoCentro = schoolCode,
+                CodigoPlantel = school.CampusCode,
+                NumeroRegistros = students.Count.ToString()
+            };
 
             foreach (Student student in students)
             {
@@ -48,17 +59,33 @@ namespace MInerdSchoolIntegration.Controllers
                     academycInformation = $"{academycInformation},{grade.Subject.Name.Substring(0, 3)}:{grade.ObtainedGrade}";
                 }
 
-                tw.WriteLine($"|D||{student.Rne}|{student.Town}|{student.AcademicPeriod}|{student.AcademicLevel}|{student.AcademicGrade}|{academycInformation.Substring(1, academycInformation.Length - 1)}|{student.BloodType}|{student.Disabilities}|");
-            }  
+                detalles.Add(new Detalle
+                {
+                    TipoRegistro = "D",
+                    CodigoCentroMinerd = student.Id.ToString(),
+                    Rne = student.Rne,
+                    MunicipioResidencia = student.Town,
+                    PeriodoAcademico = student.AcademicPeriod,
+                    NivelAcademico = student.AcademicLevel,
+                    GradoAcademico = student.AcademicLevel,
+                    InformacionAcademica = academycInformation,
+                    TipoSangre = student.BloodType,
+                    CondicionesDiscapacidad = student.Disabilities
+                });
+            }
 
+            string JSONEncabezado = JsonConvert.SerializeObject(encabezado);
+            string JSONDetalles = JsonConvert.SerializeObject(detalles);
+
+            var x = $"[{JSONEncabezado},{JSONDetalles.ToString().Substring(1, JSONDetalles.ToString().Length - 1)}";
+            tw.Write(x);
             tw.Flush();
-
             var length = memoryStream.Length;
             tw.Close();
             var toWrite = new byte[length];
             Array.Copy(memoryStream.GetBuffer(), 0, toWrite, 0, length);
 
-            return File(toWrite, "text/plain", $"{school.Name}.txt");
+            return File(toWrite, "text/plain", $"{school.Name}.json");
         }
     }
 }
